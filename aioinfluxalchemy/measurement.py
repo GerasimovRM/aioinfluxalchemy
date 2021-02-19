@@ -3,7 +3,7 @@ InfluxDB Measurement.
 """
 import six
 
-from influxalchemy import meta
+from aioinfluxalchemy import meta
 
 
 # pylint: disable=too-few-public-methods

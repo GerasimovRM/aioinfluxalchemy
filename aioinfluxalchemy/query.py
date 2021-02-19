@@ -3,10 +3,10 @@ InfluxDB Query Object.
 """
 import functools
 
-from influxalchemy import meta
+from aioinfluxalchemy import meta
 
 
-class InfluxDBQuery:
+class AioInfluxDBQuery:
     """
     InfluxDB Query object.
 
@@ -16,8 +16,8 @@ class InfluxDBQuery:
     groupby     (str):            GROUP BY string
     limit       (int):            LIMIT int
     """
-    def __init__(self, entities, client, expressions=None, groupby=None,
-                 limit=None):
+
+    def __init__(self, entities, client, expressions=None, groupby=None, limit=None):
         # pylint: disable=too-many-arguments
         self._entities = entities
         self._client = client
@@ -25,8 +25,8 @@ class InfluxDBQuery:
         self._groupby = groupby
         self._limit = limit
 
-    def __str__(self):
-        select = ", ".join(self._select)
+    async def to_string(self):
+        select = ", ".join(await self._select)
         from_ = self._from
         where = " AND ".join(self._where)
         if any(where):
@@ -39,22 +39,18 @@ class InfluxDBQuery:
             iql += " LIMIT {0}".format(self._limit)
         return "%s;" % iql
 
-    def __repr__(self):
-        return str(self)
-
-    def execute(self):
+    async def execute(self):
         """
         Execute query.
         """
-        return self._client.bind.query(str(self))
+        return await self._client.bind.query(await self.to_string())
 
     def filter(self, *expressions):
         """
         Filter query.
         """
         expressions = self._expressions + expressions
-        return InfluxDBQuery(self._entities, self._client,
-                             expressions=expressions)
+        return AioInfluxDBQuery(self._entities, self._client, expressions=expressions)
 
     def filter_by(self, **kwargs):
         """
@@ -63,24 +59,20 @@ class InfluxDBQuery:
         expressions = self._expressions
         for key, val in sorted(kwargs.items()):
             expressions += (meta.TagExp.equals(key, val),)
-        return InfluxDBQuery(self._entities, self._client,
-                             expressions=expressions)
+        return AioInfluxDBQuery(self._entities, self._client, expressions=expressions)
 
     def group_by(self, groupby):
         """
         Group query.
         """
-        return InfluxDBQuery(
-            self._entities, self._client, self._expressions, groupby)
+        return AioInfluxDBQuery(self._entities, self._client, self._expressions, groupby)
 
     def limit(self, limit):
         """
         Limit query
         """
         assert isinstance(limit, int)
-        return InfluxDBQuery(
-            self._entities, self._client, self._expressions, self._groupby,
-            limit)
+        return AioInfluxDBQuery(self._entities, self._client, self._expressions, self._groupby, limit)
 
     @property
     def measurement(self):
@@ -91,7 +83,7 @@ class InfluxDBQuery:
         return functools.reduce(lambda x, y: x | y, measurements)
 
     @property
-    def _select(self):
+    async def _select(self):
         """
         SELECT statement.
         """
@@ -102,14 +94,11 @@ class InfluxDBQuery:
                 selects.append(str(ent))
             # Entity is a Measurement
             else:
-                try:
-                    for tag in self._client.tags(ent):
-                        selects.append(tag)
-                    for field in self._client.fields(ent):
-                        selects.append(field)
-                # pylint: disable=broad-except
-                except Exception:
-                    pass
+                for tag in await self._client.tags(ent):
+                    selects.append(tag)
+                for field in await self._client.fields(ent):
+                    selects.append(field)
+        print(selects)
         return selects or ["*"]
 
     @property

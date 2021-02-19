@@ -3,8 +3,8 @@ InfluxDB Alchemy.
 """
 import pkg_resources
 
-from influxalchemy.client import InfluxAlchemy     # noqa: F401
-from influxalchemy.measurement import Measurement  # noqa: F401
+from aioinfluxalchemy.client import AioInfluxAlchemy     # noqa: F401
+from aioinfluxalchemy.measurement import Measurement  # noqa: F401
 
 
 try:
